@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Homework 2 - From wallet seed to Ethereum address</title>
+<style>
+body { background:#0d1117; color:#e6edf3; font:16px/1.6 Arial,sans-serif; margin:0; }
+main { max-width:860px; margin:auto; padding:24px 16px 60px; }
+.student-info { text-align: right; font-size: 0.95rem; color: #8b949e; border-bottom: 1px solid #30363d; padding-bottom: 8px; margin-bottom: 24px; font-family: "Courier New", monospace; }
+.student-info span { color: #3fb950; font-weight: bold; }
+h1, h2 { color:#3fb950; font-family:"Courier New",monospace; }
+h1 { font-size:1.6rem; }
+h2 { font-size:1.15rem; border-bottom:1px solid #30363d; padding-bottom:4px; margin-top:32px; }
+h3 { font-size:1rem; margin:1.2em 0 .1em; }
+code { font-family:"Courier New",monospace; color:#7ee787; background:#161b22; padding:1px 4px; word-break:break-all; }
+.m { color:#8b949e; font-size:.9rem; }
+table { border-collapse:collapse; width:100%; font-size:.92rem; }
+td, th { border:1px solid #30363d; padding:5px 8px; text-align:left; vertical-align:top; }
+th { color:#3fb950; }
+.box { border:1px solid #3fb950; padding:10px 14px; margin:12px 0; font-size:.92rem; }
+</style>
+</head>
+<body>
+<main>
+
+<div class="student-info" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+  <div>
+    <a href="https://github.com/alexgolo6/Statistics-Homework" target="_blank" style="background: #238636; color: #ffffff; padding: 5px 12px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 0.9rem; border: 1px solid rgba(240,246,252,0.1); display: inline-block;">
+      &lt;/&gt; View Source on GitHub
+    </a>
+  </div>
+  <div>
+    Student: <span>Alexandru Andrei Golosceapov</span> | Matricola: <span>2318384</span>
+  </div>
+</div>
+
+<h1>Homework 2: From wallet seed to Ethereum address</h1>
+<p class="m">Hashing, key derivation and cryptographic primitives.</p>
+
+<h2>1. The pipeline</h2>
+<ol>
+<li><b>Random entropy</b> (128 to 256 bits): the only random step.</li>
+<li><b>BIP-39:</b> entropy becomes a mnemonic of 12 to 24 words, then a 512-bit seed.</li>
+<li><b>BIP-32:</b> the seed becomes a master key, then a tree of child keys.</li>
+<li><b>BIP-44:</b> a path such as <code>m/44'/60'/0'/0/0</code> picks one key in the tree: the private key k.</li>
+<li><b>secp256k1:</b> the public key is Q = k·G.</li>
+<li><b>Keccak-256:</b> hash of Q; the last 20 bytes are the address.</li>
+<li><b>EIP-55:</b> some letters of the address are capitalised as a checksum.</li>
+</ol>
+<div class="box">
+Just to give a concrete example, here is the standard public test phrase from the Hardhat dev tool (obviously, never use this for real funds!):<br>
+<code>test test test test test test test test test test test junk</code><br>
+If we run this through the standard Ethereum derivation path (<code>m/44'/60'/0'/0/0</code>), it spits out this specific address:<br>
+<code>0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266</code> (Raw lower-case format)<br>
+<code>0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266</code> (EIP-55 format: notice the capital letters acting as a checksum)
+</div>
+
+<h2>2. Key concepts</h2>
+<table>
+<tr><th>Concept</th><th>Meaning</th><th>In the pipeline</th></tr>
+<tr><td>Key generation</td><td>Creating a new secret from randomness.</td><td>The initial entropy.</td></tr>
+<tr><td>Key derivation</td><td>Computing a key from another secret. Same input, same output.</td><td>Seed → master → child → k.</td></tr>
+<tr><td>Public-key cryptography</td><td>A secret key k and a public key Q with different roles; used for signatures.</td><td>secp256k1.</td></tr>
+<tr><td>Hashing</td><td>Any input becomes a fixed-size digest. One-way, no key.</td><td>Keccak-256.</td></tr>
+<tr><td>Checksum</td><td>Extra bits that catch typing mistakes. Not a security feature.</td><td>BIP-39 last bits, EIP-55 capitals.</td></tr>
+<tr><td>Encoding</td><td>Another way to write the same data. No secrecy.</td><td>Words, hex, the <code>0x</code> prefix.</td></tr>
+</table>
+
+<h2>3. The six pieces</h2>
+<h3>BIP-39 (2013)</h3>
+<p>Words are easier to copy than random bits. 128 bits plus 4 checksum bits make 132 bits, which is 12 words of 11 bits each (the list has 2048 = 2<sup>11</sup> words). The seed is made with PBKDF2-HMAC-SHA512 (2048 rounds), optionally with a passphrase.</p>
+<h3>BIP-32 (2012)</h3>
+<p>One seed produces a whole tree of keys, so only one backup is needed. The master key comes from HMAC-SHA512 of the seed. Each child key is computed from its parent and an index.</p>
+<h3>BIP-44 (2014)</h3>
+<p>A standard path layout so that all wallets find the same accounts: <code>m / purpose' / coin_type' / account' / change / address_index</code>. For Ethereum the purpose is 44 and the coin type is 60.</p>
+<h3>secp256k1</h3>
+<p>The curve y² = x³ + 7 over a 256-bit prime. The public key is Q = k·G, the same operation as in Homework 1 with big numbers. It is also used for the signatures (ECDSA) that authorise transactions.</p>
+<h3>Keccak-256 (2015)</h3>
+<p>The address is the last 20 bytes of the Keccak-256 hash of the public key (64 bytes, x and y).</p>
+<h3>EIP-55 (2016)</h3>
+<p>Take the lower-case address, hash that text with Keccak-256, and capitalise each letter whose matching hash digit is 8 or more. The address stays valid for old software, and a wallet can detect most typos.</p>
+
+<h2>4. Why not one single algorithm?</h2>
+<p>Each step has a different goal, and one algorithm cannot do them all:</p>
+<ul>
+<li><b>BIP-39 / 32 / 44:</b> key management and derivation (one backup, same accounts in every wallet).</li>
+<li><b>secp256k1:</b> the private/public key relationship and digital signatures.</li>
+<li><b>Keccak-256:</b> hashing, a short fixed-size identifier from the public key.</li>
+<li><b>EIP-55:</b> error detection for typos.</li>
+</ul>
+<p>Also, if one primitive turns out to be weak, the others are not automatically broken.</p>
+
+<h2>5. Timeline</h2>
+<ul>
+<li><b>1977: RSA.</b> One of the first public-key schemes, by Rivest, Shamir and Adleman. Its security rests on the difficulty of factoring large numbers.</li>
+<li><b>2001: SHA-2 / SHA-512.</b> NIST standardises the SHA-2 hash family. SHA-512 is later used inside the PBKDF2 and HMAC steps of BIP-39 and BIP-32.</li>
+<li><b>2012: BIP-32.</b> Hierarchical deterministic wallets: one seed gives a whole tree of keys. In the same year Keccak wins the NIST SHA-3 competition.</li>
+<li><b>2013: BIP-39.</b> Mnemonic words as a human-friendly way to write down the seed.</li>
+<li><b>2014: BIP-44.</b> Standard derivation paths for several accounts and several cryptocurrencies.</li>
+<li><b>2015: SHA-3 and Ethereum.</b> NIST standardises SHA-3 (based on Keccak, but with a changed padding). Ethereum launches, using the original Keccak-256.</li>
+<li><b>2016: EIP-55.</b> Mixed-case checksum for Ethereum addresses, to catch typing mistakes.</li>
+</ul>
+<p>The technologies belong to different layers. RSA (1977) is a public-key scheme, and secp256k1 later brought elliptic-curve public-key cryptography to wallets. SHA-2 (2001) and later Keccak / SHA-3 are hash functions. The BIPs (2012 to 2014) are wallet standards built on top of these primitives. Ethereum (2015) chose Keccak-256 and secp256k1, and EIP-55 (2016) added a checksum on top of the existing address format.</p>
+<p class="m">First the basic primitives, then the need to manage many keys, to remember them, to make wallets compatible, and finally to avoid typos.</p>
+
+<h2>6. SHA-2 / SHA-512 versus Keccak / SHA-3</h2>
+<p>Both are hash function families. SHA-2 uses the Merkle-Damgard design, while Keccak uses a different one, called a sponge. NIST picked Keccak for SHA-3 as a backup with a different structure, not because SHA-2 was broken.</p>
+<p>Ethereum adopted Keccak before the standard was finished. In the final SHA3-256, NIST changed the padding, so the outputs differ: <b>Keccak-256 is not the same as SHA3-256</b>. For the empty string:</p>
+<table>
+<tr><td>Keccak-256</td><td><code>c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470</code></td></tr>
+<tr><td>SHA3-256</td><td><code>a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a</code></td></tr>
+</table>
+
+<h2>7. Statistical properties</h2>
+<ul>
+<li><b>Entropy:</b> the first random bits must be uniform. 2048 = 2<sup>11</sup>, so uniform bits give uniformly chosen words.</li>
+<li><b>Hashes (SHA-512, HMAC, Keccak):</b> outputs look random and show the avalanche effect (about half of the bits change if one input bit changes).</li>
+<li><b>Keys:</b> k is uniform over a huge range. Q looks random but has a structure: (k+1)G = kG + G. It has no avalanche (see Homework 1).</li>
+<li><b>Address:</b> 160 bits, so two random addresses collide only after about 2<sup>80</sup> tries.</li>
+<li><b>EIP-55:</b> each letter's case is one check bit, about 15 per address, so a random typo is detected almost always.</li>
+</ul>
+
+<h2>8. Wallet experiment</h2>
+<p>To see how this works in practice, I played around with a test wallet on MetaMask. When I set it up, it gave me the standard 12-word recovery phrase (which is BIP-39 in action). After that, I added a second account, and the app generated a brand new address using the exact same phrase—a perfect example of the BIP-44 derivation path. I even tried importing those same 12 words into a different wallet app, and it loaded the exact same addresses, proving the whole deterministic derivation thing is real. Finally, I tried to mess up an address by changing just one capital letter, and the wallet immediately threw an 'invalid checksum' error, so EIP-55 definitely does its job catching typos!</p>
+</main>
+</body>
+</html>
