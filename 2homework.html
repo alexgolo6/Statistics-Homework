@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Homework 2 - Caesar cipher vs elliptic-curve encryption</title>
+<style>
+body { background:#0d1117; color:#e6edf3; font:16px/1.6 Arial,sans-serif; margin:0; }
+main { max-width:960px; margin:auto; padding:24px 16px 60px; }
+.student-info { text-align:right; font-size:0.95rem; color:#8b949e; border-bottom:1px solid #30363d; padding-bottom:8px; margin-bottom:24px; font-family:"Courier New",monospace; }
+.student-info span { color:#3fb950; font-weight:bold; }
+h1, h2 { color:#3fb950; font-family:"Courier New",monospace; }
+h1 { font-size:1.6rem; }
+h2 { font-size:1.15rem; border-bottom:1px solid #30363d; padding-bottom:4px; margin-top:34px; }
+h3 { font-size:1rem; margin:1.2em 0 .2em; }
+code { font-family:"Courier New",monospace; color:#7ee787; background:#161b22; padding:1px 4px; word-break:break-all; }
+.m { color:#8b949e; font-size:.9rem; }
+.panel { background:#161b22; padding:14px; border:1px solid #30363d; border-radius:4px; }
+.note { border:1px solid #3fb950; padding:10px 14px; margin:14px 0; }
+input, select, button, textarea { font:inherit; background:#0d1117; color:#e6edf3; border:1px solid #30363d; padding:5px 8px; }
+textarea { width:100%; box-sizing:border-box; }
+button { background:#238636; border-color:#238636; cursor:pointer; font-weight:bold; }
+table { border-collapse:collapse; width:100%; font-size:.92rem; }
+td, th { border:1px solid #30363d; padding:5px 8px; text-align:left; vertical-align:top; }
+th { color:#3fb950; }
+.out { background:#161b22; border:1px solid #30363d; padding:10px 14px; margin:10px 0; font-size:.92rem; word-break:break-word; }
+.out b { color:#3fb950; }
+.sc { overflow-x:auto; }
+.bars { display:flex; gap:2px; align-items:flex-end; height:110px; min-width:560px; }
+.bars div { flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; font-size:9px; color:#8b949e; }
+.bars i { display:block; width:100%; background:#3fb950; }
+.bars i.hi { background:#f85149; }
+details { margin:8px 0; }
+details summary { cursor:pointer; color:#7ee787; }
+</style>
+</head>
+<body>
+<main>
+
+<div class="student-info" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+  <div>
+    <a href="https://github.com/alexgolo6/Statistics-Homework" target="_blank" style="background: #238636; color: #ffffff; padding: 5px 12px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 0.9rem; border: 1px solid rgba(240,246,252,0.1); display: inline-block;">
+      &lt;/&gt; View Source on GitHub
+    </a>
+  </div>
+  <div>
+    Student: <span>Alexandru Andrei Golosceapov</span> | Matricola: <span>2318384</span>
+  </div>
+</div>
+
+<h1>Homework 2: Caesar cipher vs elliptic-curve encryption</h1>
+
+<div class="note">
+<b>Choice of alphabet.</b> I decided to use the <b>Romanian alphabet</b> (31 letters: a ă â b c d e f g h i î j k l m n o p q r s ș t ț u v w x y z) for the main experiments and the <b>English alphabet</b> (26 letters) for comparison. Romanian includes five additional letters: ă, â, î, ș and ț. This means that the number of possible Caesar shifts and the letter frequencies are different from English. I use the same message for both ciphers in each language setting; the English version is a translation of the Romanian message.
+</div>
+
+<p>I encrypt a short message with the Caesar cipher and a toy secp256k1-based scheme, compare their statistics, and then test simple attacks against both. Everything runs in the browser.</p>
+
+<div class="panel">
+  <label>Alphabet: <select id="lang" onchange="langChanged()">
+    <option value="ro">Romanian (main, 31 letters)</option>
+    <option value="en">English (comparison, 26 letters)</option>
+  </select></label>
+  <label style="margin-left:15px;">Caesar shift: <input id="shift" type="number" min="1" value="7" style="width:60px"></label>
+  <button style="margin-left:15px;" onclick="runAll()">Run everything</button>
+  <p style="margin:10px 0 4px;">Message:</p>
+  <textarea id="msg" rows="2"></textarea>
+  <p class="m" id="gloss" style="margin:6px 0 0;"></p>
+</div>
+
+<h2>1. Alphabets and letter frequencies</h2>
+<p>Letters in a language do not occur equally often, and their frequencies depend on the language and alphabet. The Caesar attack uses this pattern, so I start by showing the percentage of each letter in the selected alphabet.</p>
+<div class="sc" id="refChart"></div>
+<div class="out" id="refNote"></div>
+<div class="sc"><table id="cmpTable"></table></div>
+<p class="m">The letter-frequency and bigram-frequency tables used by the program are stored as reference values in the code. They are not recalculated from the sample message when the page runs. The values are approximate, so the results should be understood as a demonstration of the methods rather than a definitive measurement of every Romanian or English text. Romanian text may use both the older cedilla forms ş/ţ and the comma forms ș/ț; the program normalizes the cedilla forms to ș/ț.</p>
+
+<h2>2. Caesar cipher</h2>
+<p>Every letter in the selected alphabet is replaced by the letter <code>shift</code> places after it, wrapping around at the end. Decryption moves back by the same amount. Spaces and punctuation are left untouched. Before encryption, the input is converted to lowercase, and some accented letters outside the selected alphabet are simplified to their base letter when possible.</p>
+<div class="out" id="caesarOut">Press "Run everything".</div>
+
+<h2>3. Elliptic-curve scheme on secp256k1</h2>
+<p>This follows the Part 1 idea (public key Q = k·G), using the secp256k1 curve (<code>y² = x³ + 7</code> modulo a 256-bit prime) and JavaScript BigInt values. The private key is restricted to a small range (1 to 16384, about 14 bits) so that the attack in section 6 is feasible. This is a simplified, educational ElGamal-style scheme, not a complete or production-ready ECIES implementation. It works on letters as follows:</p>
+<ol>
+<li><b>Public setup:</b> the curve and the base point G are known to everybody.</li>
+<li><b>Receiver's keys:</b> the receiver picks a secret integer <b>k</b> and publishes the point <b>Q = kG</b>.</li>
+<li><b>Sender encrypts:</b> the sender picks a fresh random scalar <b>r</b> in the valid range 1 to n−1 and computes <b>C1 = rG</b> and the shared point <b>S = rQ</b>.</li>
+<li><b>Keystream:</b> the x coordinate of S is hashed with SHA-256 to get one number for every letter, and each letter is shifted by its own number (modulo the alphabet size).</li>
+<li><b>The sender transmits</b> C1 and the ciphertext.</li>
+<li><b>Receiver decrypts:</b> the receiver computes <b>S = k·C1</b>. This is the same point, because k·r·G = r·k·G = r·Q. The keystream is rebuilt and every letter is shifted back.</li>
+</ol>
+<p><b>Role of the keys:</b> Q is public, so anyone can encrypt for the receiver, but the receiver's private key k is needed to rebuild S and decrypt. The value r is a fresh, one-time random scalar and should not be reused. This toy scheme also has no message authentication, so it should not be used to protect real data.</p>
+<div class="out" id="eccOut">Press "Run everything".</div>
+
+<h2>4. Statistical comparison</h2>
+<p>To get more letters I encrypted my sample text (about four copies of the same passage) with both methods and counted the letters. I use two numbers. The <b>index of coincidence (IC)</b> is the probability that two letters taken at random from the text are the same: about 0.07 for real language and 1/n for random letters (n = alphabet size). The <b>chi-squared</b> value measures the distance from the uniform distribution; for random letters it should be close to n − 1.</p>
+<h3>Plain sample text</h3><div class="sc" id="c1"></div>
+<h3>Caesar ciphertext</h3><div class="sc" id="c2"></div>
+<h3>ECC ciphertext</h3><div class="sc" id="c3"></div>
+<div class="sc"><table id="statTable"></table></div>
+<div class="out" id="statNote"></div>
+
+<h3>Similarities and differences</h3>
+<div class="sc"><table>
+<tr><th></th><th>Caesar</th><th>ECC toy scheme</th></tr>
+<tr><td>Type</td><td>Symmetric: both sides know the same shift.</td><td>Public-key: Q is public, k is private.</td></tr>
+<tr><td>Encryption</td><td>Add the same number (the shift) to every letter, modulo n.</td><td>Add a different number to every letter, taken from a keystream made from the point S.</td></tr>
+<tr><td>Decryption</td><td>Subtract the shift.</td><td>Compute S = k·C1, rebuild the keystream, subtract it.</td></tr>
+<tr><td>Key space</td><td>Only n − 1 useful keys (30 for Romanian, 25 for English).</td><td>Toy version: 16384 private keys. Real secp256k1: about 2<sup>256</sup>.</td></tr>
+<tr><td>Letter frequencies</td><td>Kept, only moved by the shift. The IC stays the same as in the plain text.</td><td>In this experiment, the distribution is expected to look more uniform; the IC may be near 1/n, but this is not guaranteed for every short ciphertext.</td></tr>
+<tr><td>Same plain letter, same cipher letter?</td><td>Yes, always.</td><td>No, it depends on the position.</td></tr>
+</table></div>
+<p><b>Similarities.</b> In my implementation, both schemes change letters using numbers modulo the alphabet size, and decryption reverses those changes. In both cases, the receiver needs the correct shift or keystream to recover the message.</p>
+<p><b>Differences.</b> Caesar uses the same shift for the whole message, so the language's frequency pattern is preserved, although the letter labels change. The ECC toy scheme uses a keystream that changes from one letter to the next, so the frequency pattern is less directly visible in the ciphertext. The key space also differs: Caesar has only a small number of shifts, while the ECC key space depends on the allowed range for the private key. Caesar requires both sides to know the same shift; with public-key ECC, the sender can use the receiver's public key without learning the private key.</p>
+
+<h2>5. Statistical attack on the Caesar cipher</h2>
+<p>The algorithm I implemented is simple:</p>
+<ol>
+<li>Use the reference letter frequencies for the selected language (section 1).</li>
+<li>Count the letters of the ciphertext.</li>
+<li>Test every possible shift. For each candidate, compare the resulting letter counts with the reference frequencies using the chi-squared score.</li>
+<li>Select the shift with the smallest score as the most likely key.</li>
+</ol>
+<div class="out" id="atkDemo">Press "Run everything".</div>
+<div class="sc" id="atkChart"></div>
+<p class="m">Each bar is one candidate shift, the height is the chi-squared distance, and the red bar is the smallest one (the chosen key).</p>
+
+<h3>Different text lengths and alternative methods</h3>
+<p>To test the methods, I take fragments from the sample passage, remove spaces and punctuation, encrypt the letters with a shift, and check whether the key is recovered. Each cell is the success rate over 300 trials. Method <b>A</b> ranks shifts using single-letter frequencies. Method <b>C</b> ranks them using a reference table of common letter pairs (bigrams). Both methods test all possible shifts; a simple exhaustive search could instead decrypt with each shift and look for readable text. There are <span id="keys"></span> non-zero/useful shifts, while the algorithms test all <span id="allKeys"></span> shifts including 0. A random choice among all tested shifts would succeed about <span id="chance"></span>.</p>
+<button onclick="runTests()">Run the length tests</button>
+<div class="sc"><table id="lenTable"></table></div>
+<div class="out" id="lenNote"></div>
+<p><b>Effectiveness and limits.</b> The table shows how often each method recovers the key for the tested lengths. Short fragments contain little information, so their letter counts can differ substantially from the reference frequencies. Longer fragments usually provide more evidence, although success still depends on the text and the accuracy of the reference tables. The bigram method uses information from pairs of letters, but it depends on the quality of its stored bigram table. For simplicity, the program removes spaces before scoring, so some pairs can cross word boundaries. These tests use fragments from one sample passage, so the results should not be treated as a guarantee for every text. The main weakness exploited by both methods is that Caesar preserves the language's letter-frequency pattern.</p>
+
+<h3>The same attack on the ECC ciphertext</h3>
+<div class="out" id="eccFreq">Press "Run everything".</div>
+<div class="sc" id="eccChart"></div>
+<p>For Caesar, a candidate shift can produce a much better match to the language's frequency table than the other candidates. The ECC ciphertext does not use one fixed shift, so this Caesar attack is not expected to recover its key. The graph still shows which Caesar shift scores best, but applying that shift does not in general recover readable plaintext. These simple statistics do not prove that the ECC toy scheme is secure; they only show why this particular Caesar attack is not suitable for it.</p>
+
+<h2>6. Attack on the restricted private key</h2>
+<p>The private key k is restricted to the values 1 through 16384. The attacker knows Q and G, so the attack computes G, 2G, 3G, and so on until a point matches Q. When it finds a match, the corresponding number is the private key k. The attacker can then calculate S = k·C1 and decrypt the message in the same way as the receiver.</p>
+<button onclick="bruteForce()">Run the key-recovery attack</button>
+<div class="out" id="bf">Press "Run everything" first, then press the button.</div>
+
+<h3>Comparison with the statistical attack</h3>
+<p>The statistical attack on Caesar works on the <i>ciphertext</i>: it uses the fact that letter frequencies survive the shift. The ECC attack works on the <i>key space</i>: it does not need to analyse the message, but it does need the public key Q and the fact that there are very few possible private keys. The public key is available by design.</p>
+<h3>Why it is not feasible on a properly configured scheme</h3>
+<p>A properly configured secp256k1 private key is chosen from a range with about 2<sup>256</sup> possibilities (more precisely, from the valid non-zero scalars below the curve order). Even at 10<sup>9</sup> trials per second, checking a space of this size would take roughly 10<sup>60</sup> years, far longer than the age of the universe. The same exhaustive-search idea is practical here only because the toy version has 16,384 possible keys. This comparison concerns brute-force search; it does not mean that every possible ECC implementation is automatically secure against every kind of attack.</p>
+<h3>Other attacks and where the weaknesses come from</h3>
+<p><b>From the restricted key space:</b> an attacker could precompute all points k·G for k up to 16,384 and look up the public key in that table. More advanced methods, such as baby-step giant-step or Pollard's rho, can reduce the work to roughly the square root of the number of candidates (about 128 steps in this toy range, at a high level). For a properly sized 256-bit elliptic-curve group, generic attacks of this type still require roughly 2<sup>128</sup> operations, which is not practical.</p>
+<p><b>From the design of my toy scheme (not from the key size):</b></p>
+<ul>
+<li>If I used S only as a single shift for the whole message, the ciphertext would be a Caesar cipher and the attack of section 5 would break it without touching the curve. This is why I use one number per letter.</li>
+<li>If the sender reuses r with the same public key, the keystream repeats, and the difference of two ciphertexts reveals the difference between the two messages modulo the alphabet size.</li>
+<li>There is no authentication: an attacker can modify the ciphertext and the receiver would decrypt a changed message without noticing.</li>
+</ul>
+
+<h2>7. Conclusion</h2>
+<p>For me, the main lesson is that the two attacks exploit different weaknesses. The Caesar cipher preserves the language's letter-frequency patterns, which makes statistical analysis possible. The ECC toy scheme is not broken by this same simple attack, but its private key can be recovered because the allowed range is very small. With a properly configured ECC scheme and a sufficiently large private-key space, this direct search would not be practical. The experiment also shows why the design and implementation of an encryption scheme matter, not just the size of its keys.</p>
+</main>
+
+<script>
+const LANGS = {
+ro:{abc:'aăâbcdefghiîjklmnopqrsștțuvwxyz',
+ f:[10.63,2.79,0.51,0.95,5.12,3.8,11.89,1.28,0.84,0.38,10.27,1.15,0.26,0.07,4.74,3.1,6.72,4.45,3.14,0.0,6.94,4.11,1.18,6.55,0.98,5.96,1.23,0.06,0.17,0.08,0.64],
+ bg:'re:2.37,de:2.36,te:1.95,in:1.84,ar:1.82,ri:1.58,at:1.45,st:1.39,ul:1.38,în:1.33,nt:1.3,un:1.25,er:1.22,or:1.18,ce:1.15,le:1.12,ea:1.09,tr:1.08,ca:1.06,al:1.02,și:1.02,en:1.0,pe:0.98,cu:0.96,ra:0.92,ți:0.89,la:0.89,es:0.88,ta:0.88,ma:0.87,di:0.87,an:0.86,ti:0.85,pr:0.85,ni:0.84,ne:0.81,ie:0.8,ic:0.79,el:0.79,it:0.76,lu:0.74,ia:0.73,ac:0.71,ru:0.7,nu:0.7,ur:0.69,co:0.67,că:0.66,me:0.64,on:0.62,il:0.61,se:0.6,li:0.6,oa:0.59,tu:0.58,ii:0.57,să:0.57,ci:0.57,ec:0.55,ro:0.54,tă:0.54,ui:0.54,to:0.54,na:0.53,mi:0.53,im:0.52,ai:0.49,si:0.49,lo:0.48,nd:0.48',
+ msg:'Nimeni nu poate citi acest mesaj fără cheia secretă.',
+ gloss:'Meaning: Nobody can read this message without the secret key.',
+ txt:'Cifrul lui Cezar este una dintre cele mai vechi metode de a ascunde un mesaj. Fiecare literă din text este mutată cu același număr de poziții în alfabet, iar cine cunoaște acest număr poate citi din nou mesajul. Metoda este foarte simplă, dar astăzi nu mai poate proteja nimic important, pentru că există doar câteva chei posibile și pentru că frecvența literelor se păstrează. Într-o limbă, unele litere apar mult mai des decât altele, iar această amprentă rămâne vizibilă și după criptare. Un atacator poate număra literele din textul cifrat, le poate compara cu o limbă cunoscută și poate afla deplasarea fără să încerce nimic la întâmplare. Criptografia modernă a învățat din această greșeală și folosește chei foarte mari, iar textul cifrat arată ca un șir de litere aleatoare.'},
+en:{abc:'abcdefghijklmnopqrstuvwxyz',
+ f:[8.25,1.6,2.95,3.66,12.05,2.23,2.16,5.06,7.34,0.22,0.88,4.15,2.54,7.04,7.96,2.02,0.09,6.02,6.32,9.18,2.91,1.05,1.98,0.19,2.07,0.08],
+ bg:'th:3.49,he:2.89,in:2.56,an:2.05,er:1.94,re:1.78,on:1.59,at:1.39,nd:1.34,or:1.29,ou:1.26,en:1.25,to:1.24,ng:1.19,es:1.15,st:1.14,it:1.13,is:1.13,ar:1.1,te:1.09,ha:1.07,ti:1.04,al:1.04,ed:1.02,ve:0.91,as:0.88,of:0.88,nt:0.88,me:0.87,se:0.87,hi:0.84,le:0.83,ea:0.83,ne:0.75,ll:0.72,co:0.71,ro:0.69,de:0.67,ri:0.65,li:0.64,be:0.64,om:0.58,ic:0.58,ra:0.58,ho:0.57,io:0.57,ur:0.57,ma:0.55,fo:0.55,ca:0.55,ce:0.54,ch:0.54,el:0.53,us:0.51,no:0.51,ut:0.5,ta:0.5,la:0.5,ot:0.49,si:0.49,so:0.48,wa:0.48,il:0.48,et:0.47,yo:0.46,wi:0.46,pe:0.45,ee:0.45,lo:0.43,ac:0.43',
+ msg:'Nobody can read this message without the secret key.',
+ gloss:'',
+ txt:'The Caesar cipher is one of the oldest methods to hide a message. Every letter of the text is moved by the same number of positions in the alphabet, and anyone who knows this number can read the message again. The method is very simple, but today it cannot protect anything important, because there are only a few possible keys and the frequency of the letters is preserved. In every language some letters appear much more often than others, and this fingerprint stays visible even after encryption. An attacker can count the letters of the ciphertext, compare them with a known language and find the shift without guessing at random. Modern cryptography learned from this mistake and uses huge keys, and the ciphertext looks like a string of random letters.'}
+};
+
+// ---------- elliptic curve secp256k1 (BigInt) ----------
+const P = 2n**256n - 2n**32n - 977n;
+const N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141n;
+const G = { x:0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798n,
+            y:0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8n };
+const KEYMAX = 16384;
+const md = a => ((a % P) + P) % P;
+function inv(a) {
+  let r0 = md(a), r1 = P, s0 = 1n, s1 = 0n;
+  while (r1) { const q = r0 / r1; [r0, r1] = [r1, r0 - q * r1]; [s0, s1] = [s1, s0 - q * s1]; }
+  return md(s0);
+}
+function add(A, B) {
+  if (!A) return B;
+  if (!B) return A;
+  if (A.x === B.x && md(A.y + B.y) === 0n) return null;
+  const s = A.x === B.x ? md(3n * A.x * A.x * inv(2n * A.y)) : md((B.y - A.y) * inv(B.x - A.x));
+  const x = md(s * s - A.x - B.x);
+  return { x, y: md(s * (A.x - x) - A.y) };
+}
+function mul(k, Pt) {
+  let R = null, A = Pt;
+  while (k > 0n) { if (k & 1n) R = add(R, A); A = add(A, A); k >>= 1n; }
+  return R;
+}
+const randBig = () => { let r = 0n; for (const x of crypto.getRandomValues(new Uint8Array(32))) r = (r << 8n) | BigInt(x); return r % (N - 1n) + 1n; };
+const fullHex = v => '0x' + v.toString(16).padStart(64, '0');
+const escapeHtml = value => String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+
+// ---------- alphabet helpers ----------
+const $ = id => document.getElementById(id);
+let L, n, BG;
+function setLang() {
+  L = LANGS[$('lang').value]; n = L.abc.length;
+  BG = new Float64Array(n * n).fill(Math.log(0.01));
+  L.bg.split(',').forEach(p => { const [b, v] = p.split(':'); BG[L.abc.indexOf(b[0]) * n + L.abc.indexOf(b[1])] = Math.log(+v); });
+}
+function prep(t) {
+  t = t.toLowerCase().replace(/ş/g, 'ș').replace(/ţ/g, 'ț');
+  let o = '';
+  for (const c of t) {
+    if (L.abc.includes(c)) o += c;
+    else if (/\p{L}/u.test(c)) { const b = c.normalize('NFD')[0]; if (L.abc.includes(b)) o += b; }
+    else o += c;
+  }
+  return o;
+}
+const toIdx = t => [...t].filter(c => L.abc.includes(c)).map(c => L.abc.indexOf(c));
+function shiftText(t, fn) {
+  let i = 0;
+  return [...t].map(c => { const j = L.abc.indexOf(c); return j < 0 ? c : L.abc[fn(j, i++)]; }).join('');
+}
+
+// ---------- Caesar ----------
+const caesarEnc = (t, k) => shiftText(t, j => (j + k) % n);
+const caesarDec = (t, k) => shiftText(t, j => (j - k + n) % n);
+
+// ---------- ECC scheme ----------
+async function keystream(Sx, len) {
+  const out = [], lim = 256 - 256 % n; let ctr = 0;
+  while (out.length < len) {
+    const h = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(Sx.toString(16) + ':' + ctr++)));
+    for (const b of h) if (b < lim && out.length < len) out.push(b % n);
+  }
+  return out;
+}
+async function eccEnc(t, Q) {
+  const r = randBig(), C1 = mul(r, G), S = mul(r, Q);
+  const ks = await keystream(S.x, toIdx(t).length);
+  return { C1, ct: shiftText(t, (j, i) => (j + ks[i]) % n) };
+}
+async function eccDec(ct, C1, k) {
+  const S = mul(k, C1), ks = await keystream(S.x, toIdx(ct).length);
+  return shiftText(ct, (j, i) => (j - ks[i] + n) % n);
+}
+
+// ---------- statistics ----------
+const counts = a => { const c = Array(n).fill(0); a.forEach(i => c[i]++); return c; };
+const IC = a => counts(a).reduce((s, x) => s + x * (x - 1), 0) / (a.length * (a.length - 1));
+const chiU = a => { const e = a.length / n; return counts(a).reduce((s, x) => s + (x - e) ** 2 / e, 0); };
+const pct = a => counts(a).map(x => x * 100 / a.length);
+const bars = (arr, max, lab, fmt, hi) => `<div class="bars">${arr.map((v, i) => `<div><span>${fmt(v)}</span><i class="${i === hi ? 'hi' : ''}" style="height:${max ? v / max * 70 : 0}px"></i><span>${lab[i]}</span></div>`).join('')}</div>`;
+const f1 = v => v.toFixed(1), f0 = v => Math.round(v);
+
+// ---------- Caesar attack ----------
+function chiShifts(c) {
+  const m = c.reduce((x, y) => x + y, 0);
+  return [...Array(n).keys()].map(s => { let x = 0; for (let j = 0; j < n; j++) { const e = m * Math.max(L.f[j], .05) / 100, o = c[(j + s) % n]; x += (o - e) ** 2 / e; } return x; });
+}
+const guessA = a => { const v = chiShifts(counts(a)); return v.indexOf(Math.min(...v)); };
+function guessC(a) {
+  let best = -Infinity, bs = 0;
+  for (let s = 0; s < n; s++) {
+    let t = 0;
+    for (let i = 0; i < a.length - 1; i++) t += BG[((a[i] - s + n) % n) * n + ((a[i + 1] - s + n) % n)];
+    if (t > best) { best = t; bs = s; }
+  }
+  return bs;
+}
+
+// ---------- page logic ----------
+function langInfo(l) {
+  const o = [...l.abc].map((c, i) => [c, l.f[i]]).sort((a, b) => b[1] - a[1]);
+  return { n: l.abc.length, top: o.slice(0, 5).map(x => x[0]).join(', '), low: o.slice(-5).map(x => x[0]).join(', '), ic: l.f.reduce((s, x) => s + (x / 100) ** 2, 0) };
+}
+function drawRef() {
+  $('refChart').innerHTML = bars(L.f, Math.max(...L.f), [...L.abc], f1);
+  const i = langInfo(L);
+  $('refNote').innerHTML = `Alphabet size <b>n = ${n}</b>, so a Caesar cipher has only <b>${n - 1}</b> useful keys. The five most frequent letters are <b>${i.top}</b> (together ${[...L.abc].map((c, k) => L.f[k]).sort((a, b) => b - a).slice(0, 5).reduce((s, x) => s + x, 0).toFixed(0)}% of all letters) and the five rarest are <b>${i.low}</b>.`;
+  const r = langInfo(LANGS.ro), e = langInfo(LANGS.en);
+  $('cmpTable').innerHTML = `<tr><th></th><th>Romanian</th><th>English</th></tr>
+   <tr><td>Alphabet size</td><td>${r.n}</td><td>${e.n}</td></tr>
+   <tr><td>Useful Caesar keys</td><td>${r.n - 1}</td><td>${e.n - 1}</td></tr>
+   <tr><td>Most frequent letters</td><td>${r.top}</td><td>${e.top}</td></tr>
+   <tr><td>Rarest letters</td><td>${r.low}</td><td>${e.low}</td></tr>
+   <tr><td>Expected IC (random letters: 1/n)</td><td>${r.ic.toFixed(3)} (${(1 / r.n).toFixed(3)})</td><td>${e.ic.toFixed(3)} (${(1 / e.n).toFixed(3)})</td></tr>`;
+  $('chance').textContent = (100 / n).toFixed(1) + '%';
+  $('keys').textContent = n - 1;
+  $('allKeys').textContent = n;
+  $('gloss').textContent = L.gloss;
+}
+function langChanged() { setLang(); $('msg').value = L.msg; $('shift').value = 7; drawRef(); runAll(); runTests(); }
+
+async function runAll() {
+  try {
+    const k = Math.min(n - 1, Math.max(1, parseInt($('shift').value) || 1)); $('shift').value = k;
+    const msg = prep($('msg').value);
+    const ce = caesarEnc(msg, k);
+    $('caesarOut').innerHTML = `Message (cleaned): <b>${escapeHtml(msg)}</b><br>Shift k = <b>${k}</b><br>Ciphertext: <b>${escapeHtml(ce)}</b><br>Decrypted: <b>${escapeHtml(caesarDec(ce, k))}</b>`;
+    const kb = crypto.getRandomValues(new Uint32Array(1))[0] % KEYMAX + 1, Q = mul(BigInt(kb), G);
+    const e = await eccEnc(msg, Q), dec = await eccDec(e.ct, e.C1, BigInt(kb));
+    S = { kb, Q, e };
+    $('eccOut').innerHTML = `Receiver's private key: <b>not shown in this panel</b> (stored internally by this teaching demo so decryption and the key-recovery experiment can be tested)<br>Receiver's public key Q = kG and transmitted point C1 = rG: <details><summary>Show full public-point coordinates</summary><p>Q.x = <code>${fullHex(Q.x)}</code><br>Q.y = <code>${fullHex(Q.y)}</code></p><p>C1.x = <code>${fullHex(e.C1.x)}</code><br>C1.y = <code>${fullHex(e.C1.y)}</code></p></details><br>Ciphertext: <b>${escapeHtml(e.ct)}</b><br>Decrypted by the receiver: <b>${escapeHtml(dec)}</b> ${dec === msg ? '(matches the message)' : '(MISMATCH)'}`;
+    // statistics on the sample text (4 copies)
+    const T = prep((L.txt + ' ').repeat(4)), pi = toIdx(T), ci = pi.map(x => (x + k) % n);
+    const eT = await eccEnc(T, Q), ei = toIdx(eT.ct);
+    const mx = Math.max(...L.f, ...pct(ci), ...pct(ei)), lab = [...L.abc];
+    $('c1').innerHTML = bars(pct(pi), mx, lab, f1);
+    $('c2').innerHTML = bars(pct(ci), mx, lab, f1);
+    $('c3').innerHTML = bars(pct(ei), mx, lab, f1);
+    const row = (nm, a) => `<tr><td>${nm}</td><td>${a.length}</td><td>${IC(a).toFixed(4)}</td><td>${chiU(a).toFixed(0)}</td></tr>`;
+    $('statTable').innerHTML = `<tr><th>Text</th><th>Letters</th><th>IC</th><th>Chi-squared vs uniform (random letters: about ${n - 1})</th></tr>` + row('Plain sample', pi) + row('Caesar ciphertext', ci) + row('ECC ciphertext', ei);
+    $('statNote').innerHTML = `The Caesar ciphertext has exactly the same IC as the plain text; its frequency pattern is only shifted by ${k} places. In this run, the ECC ciphertext has IC = ${IC(ei).toFixed(4)} (the uniform-random reference is 1/n = ${(1 / n).toFixed(3)}) and chi-squared = ${chiU(ei).toFixed(2)} (the uniform reference is about ${n - 1}). These statistics describe this sample only and do not, by themselves, prove that an encryption scheme is secure.`;
+    // Caesar attack demo
+    const v = chiShifts(counts(ci)), best = v.indexOf(Math.min(...v));
+    const mc = toIdx(ce), g = mc.length > 1 ? guessA(mc) : -1;
+    $('atkDemo').innerHTML = `On the sample ciphertext (${ci.length} letters): recovered shift <b>${best}</b>, true shift <b>${k}</b> ${best === k ? '(success)' : '(failed)'}.<br>On my short message (${mc.length} letters): recovered shift <b>${g}</b>, true shift <b>${k}</b> ${g === k ? '(success)' : '(failed, too few letters)'}.`;
+    $('atkChart').innerHTML = bars(v, Math.max(...v), [...Array(n).keys()], f0, best);
+    // same attack on ECC
+    const ve = chiShifts(counts(ei)), be = ve.indexOf(Math.min(...ve));
+    $('eccFreq').innerHTML = `Best-scoring Caesar shift for the ECC text: ${be}. Applying it gives: <b>${escapeHtml(caesarDec(eT.ct, be).slice(0, 70))}...</b>. This does not recover the original message in general.`;
+    $('eccChart').innerHTML = bars(ve, Math.max(...ve), [...Array(n).keys()], f0, be);
+    $('bf').textContent = 'Press the button to attack the public key above.';
+  } catch (err) { console.error(err); $('eccOut').textContent = 'Error: ' + err.message + ' (the SHA-256 function needs https or a local file).'; }
+}
+
+function runTests() {
+  const pl = toIdx(prep(L.txt)), tr = 300, rows = [];
+  // A fixed seed makes the demonstration's 300-trial results reproducible.
+  let state = $('lang').value === 'ro' ? 20261021 : 20261022;
+  const nextRandom = () => { state = (Math.imul(state, 1664525) + 1013904223) >>> 0; return state / 4294967296; };
+  for (const len of [5, 10, 20, 40, 80, 160, 320]) {
+    const ok = [0, 0];
+    for (let t = 0; t < tr; t++) {
+      const st = Math.floor(nextRandom() * (pl.length - len + 1)), shift = Math.floor(nextRandom() * n);
+      const c = pl.slice(st, st + len).map(x => (x + shift) % n);
+      if (guessA(c) === shift) ok[0]++;
+      if (guessC(c) === shift) ok[1]++;
+    }
+    rows.push([len, ...ok.map(o => Math.round(o * 100 / tr))]);
+  }
+  $('lenTable').innerHTML = '<tr><th>Letters</th><th>A: letter frequencies (chi-squared)</th><th>C: bigram score</th></tr>' + rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}%</td><td>${r[2]}%</td></tr>`).join('');
+  $('lenNote').innerHTML = `Alphabet: <b>${$('lang').options[$('lang').selectedIndex].text}</b>. Each result is the success rate over 300 trials on fragments of this sample passage. A fixed seed makes these results repeatable. The fragments are different from the reference frequency tables, but they come from one passage only, so the results should not be generalized to every text.`;
+}
+
+async function bruteForce() {
+  const out = $('bf');
+  if (!S || !S.e) { out.textContent = 'Press "Run everything" first.'; return; }
+  const Q = S.Q, t0 = performance.now(); let R = G, found = 0;
+  for (let k = 1; k <= KEYMAX; k++) {
+    if (R.x === Q.x && R.y === Q.y) { found = k; break; }
+    R = add(R, G);
+    if (k % 1000 === 0) { out.textContent = 'Trying... ' + k + ' keys checked'; await new Promise(r => setTimeout(r)); }
+  }
+  const ms = performance.now() - t0;
+  if (!found) { out.textContent = 'Key not found in the range.'; return; }
+  const dec = await eccDec(S.e.ct, S.e.C1, BigInt(found));
+  out.innerHTML = `Recovered private key k = <b>${found}</b> after ${found} trials in ${ms.toFixed(0)} ms. The program's stored key is ${found === S.kb ? 'a match' : 'not a match'}.<br>Message recovered using the recovered key: <b>${escapeHtml(dec)}</b>`;
+}
+
+let S = null;
+setLang(); $('msg').value = L.msg; drawRef(); runAll(); runTests();
+</script>
+</body>
+</html>
