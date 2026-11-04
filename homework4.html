@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Homework 4: Welford's Formulas and Sampling</title>
+<style>
+body { background:#0d1117; color:#e6edf3; font:16px/1.6 Arial,sans-serif; margin:0; }
+main { max-width:960px; margin:auto; padding:24px 16px 60px; }
+.student-info { text-align:right; font-size:.95rem; color:#8b949e; border-bottom:1px solid #30363d; padding-bottom:8px; margin-bottom:12px; font-family:"Courier New",monospace; }
+.student-info span { color:#3fb950; font-weight:bold; }
+.repo { text-align:right; margin-bottom:20px; }
+.repo a { display:inline-block; background:#161b22; color:#3fb950; border:1px solid #3fb950; padding:6px 14px; text-decoration:none; font-family:"Courier New",monospace; font-weight:bold; }
+.repo a:hover { background:#3fb950; color:#0d1117; }
+h1,h2 { color:#3fb950; font-family:"Courier New",monospace; }
+h1 { font-size:1.6rem; }
+h2 { font-size:1.15rem; border-bottom:1px solid #30363d; padding-bottom:4px; margin-top:30px; }
+h3 { font-size:1rem; margin:1.2em 0 .2em; }
+code { font-family:"Courier New",monospace; color:#7ee787; background:#161b22; padding:1px 4px; }
+.m { color:#8b949e; font-size:.9rem; }
+.panel { background:#161b22; padding:14px; border:1px solid #30363d; border-radius:4px; margin:14px 0; }
+.box { border:1px solid #3fb950; padding:10px 14px; margin:14px 0; }
+input,button { font:inherit; background:#0d1117; color:#e6edf3; border:1px solid #30363d; padding:6px 8px; }
+button { background:#238636; border-color:#238636; cursor:pointer; font-weight:bold; }
+button:hover { filter:brightness(1.12); }
+.tabs { display:flex; gap:8px; border-bottom:1px solid #30363d; padding-bottom:10px; margin:18px 0; }
+.tabs button { background:#161b22; border:1px solid #30363d; color:#8b949e; padding:8px 16px; }
+.tabs button.active { background:#238636; border-color:#238636; color:white; }
+.exercise { display:none; }
+.exercise.active { display:block; }
+.grid { display:grid; gap:10px; grid-template-columns:repeat(2,minmax(0,1fr)); }
+.out { background:#161b22; border:1px solid #30363d; padding:10px 14px; margin:10px 0; font-size:.92rem; }
+.out b { color:#3fb950; }
+.sc { overflow-x:auto; }
+table { border-collapse:collapse; width:100%; font-size:.9rem; }
+td,th { border:1px solid #30363d; padding:6px 8px; text-align:left; }
+th { color:#3fb950; }
+canvas { width:100%; height:auto; background:#161b22; border:1px solid #30363d; display:block; }
+.cap { font-size:.8rem; color:#8b949e; text-align:center; margin:3px 0 0; }
+.formula { background:#161b22; padding:12px; border-left:3px solid #3fb950; margin:10px 0; overflow-x:auto; }
+@media(max-width:650px) { .grid { grid-template-columns:1fr; } .tabs { flex-wrap:wrap; } }
+</style>
+</head>
+<body>
+<main>
+<div class="student-info">
+  Student: <span>Alexandru Andrei Golosceapov</span> | Matricola: <span>2318384</span>
+</div>
+<div class="repo">
+  <a href="https://github.com/alexgolo6/Statistics-Homework" target="_blank" rel="noopener">Show GitHub repository</a>
+</div>
+
+<h1>Homework 4: Welford's Formulas and Sampling</h1>
+<p>In this homework, I look at how the mean and variance can be updated when new observations are added. After deriving Welford's formulas, I use them in a simulation where each hacker receives a score between 0 and 10 for every system. I compare the results from the simulation with the theoretical values and look at what happens when the number of systems changes. Since the scores are generated randomly, the exact results can be different each time the simulation runs.</p>
+
+<div class="tabs">
+  <button id="tab1" class="active" onclick="showExercise(1)">Exercise 1</button>
+  <button id="tab2" onclick="showExercise(2)">Exercise 2</button>
+</div>
+
+<section id="ex1" class="exercise active">
+<h2>Exercise 1 – Welford's Recurrence Formulas</h2>
+<p>The goal is to calculate the mean and variance while the observations arrive one by one. Instead of storing all the values and recalculating everything after each new observation, Welford's method updates the results using the previous values.</p>
+
+<h3>1. Deriving the formulas</h3>
+<p>Suppose that after observing <code>n</code> values, I already know their mean <code>M<sub>n</sub></code> and the sum of squared deviations:</p>
+<div class="formula">
+  <code>SS<sub>n</sub> = Σ (x<sub>i</sub> − M<sub>n</sub>)²</code>
+</div>
+<p>Now a new observation <code>x</code> arrives. I define the difference between this value and the old mean:</p>
+<div class="formula"><code>δ = x − M<sub>n</sub></code></div>
+<p>The new mean is the new sum divided by the new number of observations. The old sum is <code>n·M<sub>n</sub></code>, so:</p>
+<div class="formula"><code>M<sub>n+1</sub> = (n·M<sub>n</sub> + x) / (n + 1) = M<sub>n</sub> + (x − M<sub>n</sub>) / (n + 1) = M<sub>n</sub> + δ / (n + 1)</code></div>
+<p>This is Knuth's recurrence for the mean: the new mean is the old mean plus a correction proportional to <code>δ</code>. I follow the same idea for the sum of squares and for the variance.</p>
+<p>After updating the mean, I calculate the difference between the new value and the new mean:</p>
+<div class="formula"><code>δ₂ = x − M<sub>n+1</sub></code></div>
+<p>To update the sum of squares, I use the fact that the deviations from the old mean add up to zero. Replacing the old mean with the new mean changes the sum of squares of the previous observations by <code>nδ²/(n + 1)²</code>. The new observation contributes <code>n²δ²/(n + 1)²</code>. Adding these two changes gives <code>nδ²/(n + 1)</code>, which is equal to <code>δ · δ₂</code>. Therefore:</p>
+<div class="formula"><code>SS<sub>n+1</sub> = SS<sub>n</sub> + δ · δ₂</code></div>
+<p>The sample variance of <code>n</code> values is the sum of squares divided by <code>n − 1</code>:</p>
+<div class="formula"><code>s²<sub>n</sub> = SS<sub>n</sub> / (n − 1)</code></div>
+<p>To get a recurrence for the variance itself, I divide <code>SS<sub>n+1</sub></code> by <code>n</code> and replace <code>SS<sub>n</sub></code> with <code>(n − 1)·s²<sub>n</sub></code> (this works for <code>n ≥ 2</code>):</p>
+<div class="formula"><code>s²<sub>n+1</sub> = ((n − 1) / n) · s²<sub>n</sub> + δ² / (n + 1)</code></div>
+<p>In the code below I keep <code>SS</code> and compute the variance as <code>SS / (n − 1)</code>, which is equivalent.</p>
+<div class="box">
+  <b>The main idea:</b> I only need to remember the number of values, the current mean and the current sum of squares. Each new observation updates these three quantities.
+</div>
+
+<h3>2. The code</h3>
+<p>The core update is only 3 lines (<code>delta</code>, <code>mean</code> and <code>SS</code>), plus the counter <code>n++</code>. Here, <code>mean</code> stores the current mean and <code>SS</code> stores the sum of squared deviations.</p>
+<pre class="panel"><code>n++;
+const delta = x - mean;
+mean += delta / n;
+SS += delta * (x - mean);</code></pre>
+<p class="m">The code uses the updated mean in the last line. This is important for Welford's formula.</p>
+
+<h3>3. Numerical example</h3>
+<p>A sequence of numerical observations can be entered below. The calculation is performed one observation at a time using Welford's method, and the result is compared with the direct calculation.</p>
+<div class="panel">
+  <label for="values">Observations:</label><br>
+  <input id="values" type="text" value="4, 7, 2, 9, 5, 8" style="width:min(100%,520px);margin:8px 0;">
+  <button onclick="calculateExample()">Calculate</button>
+  <div id="exampleResult" class="out"></div>
+</div>
+<div class="out" id="stepResult"></div>
+</section>
+
+<section id="ex2" class="exercise">
+<h2>Exercise 2 – Sampling Mean and Variance</h2>
+<h3>1. The score distribution</h3>
+<p>I assign each penetration attempt a score between 0 and 10. I chose a discrete uniform distribution, where every integer score from 0 to 10 has the same probability. I used this distribution because it is easy to describe and its theoretical mean and variance are straightforward to calculate. This gives me clear values to compare with the simulation.</p>
+<div class="sc"><table>
+<tr><th>Possible score</th><th>Probability</th></tr>
+<tr><td>0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10</td><td>1/11 for each score</td></tr>
+</table></div>
+<p>For this distribution, the theoretical mean and variance are:</p>
+<div class="formula"><code>μ = (0 + 1 + ... + 10) / 11 = 5</code></div>
+<div class="formula"><code>σ² = ((0 − 5)² + ... + (10 − 5)²) / 11 = 10</code></div>
+<p>There are <code>m</code> independent hackers. Each hacker attempts <code>n</code> systems and receives one score per system. I use Welford's formulas separately for every hacker to calculate that hacker's sampling mean and sample variance.</p>
+
+<h3>2. Run the simulation</h3>
+<div class="panel">
+  <div class="grid">
+    <label>Number of hackers (m)<br><input id="m" type="number" min="100" max="5000" step="100" value="1000"></label>
+    <label>Number of systems (n)<br><input id="n" type="number" min="2" max="1000" step="1" value="10"></label>
+  </div>
+  <p><button onclick="runSimulation()" style="margin-top:12px;">Run simulation</button></p>
+  <p class="m" id="simStatus">Ready to run.</p>
+</div>
+
+<h3>3. Results for the current experiment</h3>
+<p>For every hacker, I calculate a sampling mean and a sample variance. Then I take the average of these values across all hackers. Since the sample variance is calculated using <code>n − 1</code>, its expected value is the theoretical variance, 10. The expected value of the sample mean is likewise the theoretical mean, 5.</p>
+<div class="sc"><table id="resultTable">
+<tr><th>Quantity</th><th>Simulation result</th><th>Theoretical value</th></tr>
+<tr><td>Average of sampling means</td><td>—</td><td>μ = 5</td></tr>
+<tr><td>Average of sampling variances</td><td>—</td><td>σ² = 10</td></tr>
+</table></div>
+<div class="grid">
+  <div class="panel"><b>Sampling means</b><p class="m">Standard deviation across hackers</p><div id="meanSpread">—</div></div>
+  <div class="panel"><b>Sampling variances</b><p class="m">Standard deviation across hackers</p><div id="varSpread">—</div></div>
+</div>
+<div class="grid">
+  <div><canvas id="meanChart" width="420" height="190"></canvas><p class="cap">Distribution of the hackers' sampling means</p></div>
+  <div><canvas id="varChart" width="420" height="190"></canvas><p class="cap">Distribution of the hackers' sampling variances</p></div>
+</div>
+
+<h3>4. Repeat for different values of n</h3>
+<p>To see the effect of the number of systems, I repeat the experiment for several values of <code>n</code>. The same number of hackers is used for each value. The table shows the average sampling mean and variance, together with the spread of the individual estimates.</p>
+<div class="sc"><table id="comparisonTable">
+<tr><th>n systems</th><th>Average sampling mean</th><th>Average sampling variance</th><th>SD of sampling means</th><th>SD of sampling variances</th></tr>
+</table></div>
+<div class="out" id="interpretation">The interpretation of the results will appear after the simulation.</div>
+
+<h3>5. Interpretation and conclusion</h3>
+<p>The average of the sampling means should be close to the theoretical mean, 5. The average of the sample variances should also be close to the theoretical variance, 10. The values will not necessarily match exactly because each hacker receives a different random sample and only a finite number of hackers is included in the simulation.</p>
+<p><b>Conclusion from the comparison.</b> Both averages end up very close to μ and σ². This means that the sample mean and the sample variance (with <code>n − 1</code>) are <i>unbiased estimators</i>: their expected values are exactly μ and σ², for any n. A single hacker can be above or below the true value, but the errors cancel on average. If the variance were divided by <code>n</code> instead, its average would be only about <code>(n − 1)/n · σ²</code> (about 9 for n = 10), which is why <code>n − 1</code> is used. This is useful in inferential statistics because in practice we have only one sample and not m of them: unbiasedness tells us that the estimate has no systematic error, and the spread of the estimates tells us how much to trust it.</p>
+<p>When <code>n</code> increases, each hacker has more observations. This usually makes the individual sampling means less spread out and closer to 5. The sample variances also tend to become less variable across hackers, although they can still differ from one sample to another. For the mean this is exact: its standard deviation is <code>σ/√n</code>, so it shrinks with the square root of n (here about 1.00 for n = 10 and 0.32 for n = 100).</p>
+<p>One thing I noticed in this experiment is that increasing the number of systems and increasing the number of hackers do not do the same thing. More systems make each hacker's estimates more stable, while more hackers make the averages across hackers more reliable. This is useful in inferential statistics because we often cannot measure an entire population. Instead, we use samples to estimate its characteristics. Welford's method makes it possible to calculate the sample mean and variance efficiently as each new score is received.</p>
+</section>
+</main>
+
+<script>
+function showExercise(which) {
+  document.getElementById('ex1').classList.toggle('active', which === 1);
+  document.getElementById('ex2').classList.toggle('active', which === 2);
+  document.getElementById('tab1').classList.toggle('active', which === 1);
+  document.getElementById('tab2').classList.toggle('active', which === 2);
+}
+
+function welford(values) {
+  let n = 0, mean = 0, SS = 0;
+  for (const x of values) {
+    n++;
+    const delta = x - mean;
+    mean += delta / n;
+    SS += delta * (x - mean);
+  }
+  return { n, mean, SS, variance: n > 1 ? SS / (n - 1) : NaN };
+}
+
+function calculateExample() {
+  const values = document.getElementById('values').value.split(',').map(x => x.trim()).filter(x => x !== '').map(Number);
+  const out = document.getElementById('exampleResult');
+  if (!values.length || values.some(x => !Number.isFinite(x))) {
+    out.textContent = 'Invalid input. Please use numbers separated by commas.';
+    return;
+  }
+  const r = welford(values);
+  const directMean = values.reduce((a,b) => a+b, 0) / values.length;
+  const directVar = values.length > 1 ? values.reduce((s,x) => s + (x-directMean)**2, 0)/(values.length-1) : NaN;
+  out.innerHTML = `<b>Welford result</b><br>Number of observations: ${r.n}<br>Mean: ${r.mean.toFixed(4)}<br>Sum of squares (SS): ${r.SS.toFixed(4)}<br>Sample variance: ${Number.isFinite(r.variance) ? r.variance.toFixed(4) : 'Not defined for one value'}`;
+  document.getElementById('stepResult').innerHTML = `I also checked the result with the direct formulas. Mean difference: <b>${Math.abs(r.mean-directMean).toExponential(2)}</b>. Variance difference: <b>${Number.isFinite(r.variance) ? Math.abs(r.variance-directVar).toExponential(2) : 'not applicable'}</b>. The results should be equal apart from tiny rounding differences.`;
+}
+
+function randomScore() { return Math.floor(Math.random() * 11); }
+
+function simulateOne(n) {
+  let count = 0, mean = 0, SS = 0;
+  for (let i = 0; i < n; i++) {
+    const x = randomScore();
+    count++;
+    const delta = x - mean;
+    mean += delta / count;
+    SS += delta * (x - mean);
+  }
+  return { mean, variance: SS / (n - 1) };
+}
+
+function average(a) { return a.reduce((s,x) => s+x, 0) / a.length; }
+function sampleSD(a) {
+  if (a.length < 2) return 0;
+  const mu = average(a);
+  return Math.sqrt(a.reduce((s,x) => s+(x-mu)**2, 0)/(a.length-1));
+}
+function f(x) { return x.toFixed(3); }
+
+function drawHistogram(canvasId, data, min, max, marker, label) {
+  const cv = document.getElementById(canvasId), g = cv.getContext('2d');
+  if (canvasId === 'varChart') max = Math.max(max, Math.ceil(Math.max(...data) + 1));
+  const W=cv.width, H=cv.height, bins=24, counts=Array(bins).fill(0);
+  g.clearRect(0,0,W,H);
+  for (const x of data) {
+    let b=Math.floor((x-min)/(max-min)*bins);
+    if (b>=0 && b<bins) counts[b]++;
+  }
+  const top=Math.max(1,...counts), plotH=H-38, plotW=W-40;
+  g.fillStyle='#3fb950';
+  counts.forEach((c,i) => {
+    const bh=c/top*(plotH-8);
+    g.fillRect(30+i*plotW/bins,H-25-bh,Math.max(1,plotW/bins-2),bh);
+  });
+  const mx=30+(marker-min)/(max-min)*plotW;
+  if (mx>=30 && mx<=30+plotW) {
+    g.strokeStyle='#f85149'; g.lineWidth=2; g.beginPath();
+    g.moveTo(mx,8); g.lineTo(mx,H-25); g.stroke();
+  }
+  g.fillStyle='#8b949e'; g.font='11px Arial'; g.textAlign='left';
+  g.fillText(min.toFixed(1),25,H-7); g.textAlign='right';
+  g.fillText(max.toFixed(1),W-8,H-7);
+  g.textAlign='center'; g.fillText(label, W/2, 14);
+}
+
+function runSimulation() {
+  const m = Math.max(100, Math.min(5000, parseInt(document.getElementById('m').value)||1000));
+  const n = Math.max(2, Math.min(1000, parseInt(document.getElementById('n').value)||10));
+  document.getElementById('m').value=m;
+  document.getElementById('n').value=n;
+  const status=document.getElementById('simStatus');
+  status.textContent='Simulating...';
+  setTimeout(() => {
+    const means=[], vars=[];
+    for (let h=0; h<m; h++) {
+      const r=simulateOne(n);
+      means.push(r.mean); vars.push(r.variance);
+    }
+    const meanAvg=average(means), varAvg=average(vars);
+    const meanSd=sampleSD(means), varSd=sampleSD(vars);
+    document.getElementById('resultTable').innerHTML =
+      `<tr><th>Quantity</th><th>Simulation result</th><th>Theoretical value</th></tr>
+       <tr><td>Average of sampling means</td><td>${f(meanAvg)}</td><td>μ = 5</td></tr>
+       <tr><td>Average of sampling variances</td><td>${f(varAvg)}</td><td>σ² = 10</td></tr>`;
+    document.getElementById('meanSpread').textContent=f(meanSd);
+    document.getElementById('varSpread').textContent=f(varSd);
+    drawHistogram('meanChart',means,0,10,5,'Mean scores');
+    drawHistogram('varChart',vars,0,35,10,'Sample variances');
+
+    const ns=[2,5,10,30,100,300];
+    let rows='<tr><th>n systems</th><th>Average sampling mean</th><th>Average sampling variance</th><th>SD of sampling means</th><th>SD of sampling variances</th></tr>';
+    const spreads=[];
+    for (const size of ns) {
+      const a=[],v=[];
+      for (let h=0;h<m;h++) { const r=simulateOne(size); a.push(r.mean); v.push(r.variance); }
+      const am=average(a), av=average(v), sm=sampleSD(a), sv=sampleSD(v);
+      rows+=`<tr><td>${size}</td><td>${f(am)}</td><td>${f(av)}</td><td>${f(sm)}</td><td>${f(sv)}</td></tr>`;
+      spreads.push({n:size, sm, sv});
+    }
+    document.getElementById('comparisonTable').innerHTML=rows;
+    const first=spreads[0], last=spreads[spreads.length-1];
+    document.getElementById('interpretation').innerHTML =
+      `In this run, the standard deviation of the sampling means changes from <b>${f(first.sm)}</b> at n = ${first.n} to <b>${f(last.sm)}</b> at n = ${last.n}. The standard deviation of the sampling variances changes from <b>${f(first.sv)}</b> to <b>${f(last.sv)}</b>. This illustrates that larger samples generally make both estimates less variable. The exact values fluctuate because the data are random.`;
+    status.textContent=`Done: ${m} hackers simulated for the selected n = ${n}. The comparison uses the same m for each sample size.`;
+  },20);
+}
+
+calculateExample();
+runSimulation();
+</script>
+</body>
+</html>
