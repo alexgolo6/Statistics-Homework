@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Homework 5: Numerical Integration and Normal CDF</title>
+<style>
+body{background:#0d1117;color:#e6edf3;font:16px/1.6 Arial,sans-serif;margin:0}main{max-width:960px;margin:auto;padding:24px 16px 60px}
+.student-info{text-align:right;font-size:.95rem;color:#8b949e;border-bottom:1px solid #30363d;padding-bottom:8px;margin-bottom:12px;font-family:"Courier New",monospace}.student-info span{color:#3fb950;font-weight:bold}
+.repo{text-align:right;margin-bottom:20px}.repo a{display:inline-block;background:#161b22;color:#3fb950;border:1px solid #3fb950;padding:6px 14px;text-decoration:none;font-family:"Courier New",monospace;font-weight:bold}
+h1,h2{color:#3fb950;font-family:"Courier New",monospace}h1{font-size:1.6rem}h2{font-size:1.15rem;border-bottom:1px solid #30363d;padding-bottom:4px;margin-top:30px}h3{font-size:1rem;margin:1.2em 0 .2em}
+code{font-family:"Courier New",monospace;color:#7ee787;background:#161b22;padding:1px 4px}.m{color:#8b949e;font-size:.9rem}
+.panel{background:#161b22;padding:14px;border:1px solid #30363d;border-radius:4px;margin:14px 0}.box{border:1px solid #3fb950;padding:10px 14px;margin:14px 0}
+input,select,button{font:inherit;background:#0d1117;color:#e6edf3;border:1px solid #30363d;padding:6px 8px}button{background:#238636;border-color:#238636;cursor:pointer;font-weight:bold}
+.tabs{display:flex;gap:8px;border-bottom:1px solid #30363d;padding-bottom:10px;margin:18px 0}.tabs button{background:#161b22;border:1px solid #30363d;color:#8b949e;padding:8px 16px}.tabs button.active{background:#238636;border-color:#238636;color:white}
+.exercise{display:none}.exercise.active{display:block}.grid{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.out{background:#161b22;border:1px solid #30363d;padding:10px 14px;margin:10px 0;font-size:.92rem}.out b{color:#3fb950}.sc{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem}td,th{border:1px solid #30363d;padding:6px 8px;text-align:left}th{color:#3fb950}
+.formula{background:#161b22;padding:12px;border-left:3px solid #3fb950;margin:10px 0;overflow-x:auto}.small{font-size:.86rem}
+canvas{width:100%;height:auto;background:#161b22;border:1px solid #30363d;display:block}.cap{font-size:.8rem;color:#8b949e;text-align:center;margin:3px 0 0}a{color:#58a6ff}
+@media(max-width:650px){.grid{grid-template-columns:1fr}.tabs{flex-wrap:wrap}}
+</style></head><body><main>
+<div class="student-info">Student: <span>Alexandru Andrei Golosceapov</span> | Matricola: <span>2318384</span></div>
+<div class="repo"><a href="https://github.com/alexgolo6/Statistics-Homework" target="_blank" rel="noopener">Show GitHub repository</a></div>
+<h1>Homework 5: Numerical Integration and Normal CDF</h1>
+<p>In this homework, I compare two numerical ways of thinking about integration: dividing the domain into small intervals and dividing the range of function values into levels. I also implement Simpson's rule to calculate values of the standard normal CDF and compare them with a reference table. I kept the examples relatively simple, but included a few functions that show why the two definitions of integration are not always interchangeable in a straightforward numerical experiment.</p>
+<div class="tabs"><button id="tab1" class="active" onclick="showExercise(1)">Exercise 1</button><button id="tab2" onclick="showExercise(2)">Exercise 2</button></div>
+
+<section id="ex1" class="exercise active">
+<h2>Exercise 1 – Riemann and Lebesgue Integration</h2>
+<p>The integral can be understood as the area under a function. The Riemann approach divides the x-domain into small intervals. The Lebesgue approach groups points according to the values of the function and measures the corresponding subsets of the domain.</p>
+<h3>1. The two numerical approaches</h3>
+<div class="box"><b>Riemann-inspired method – partitioning the domain</b><p>I divide [a,b] into N equal intervals and use the midpoint of each interval to estimate the rectangle height:</p><div class="formula"><code>Integral ≈ Σ f(xᵢ*) · Δx</code></div><p class="small">Here, Δx is the width of an interval and xᵢ* is its midpoint.</p></div>
+<div class="box"><b>Lebesgue-inspired method – partitioning the range</b><p>For a non-negative bounded function, I use the layer-cake idea: I divide the range of function values into K horizontal levels. For each level y, I estimate the length of the set of x-values for which f(x) is at least y.</p><div class="formula"><code>Integral = ∫₀ᴹ measure({x : f(x) &gt; y}) dy</code></div><p class="small">In the numerical version, the measure of each preimage is estimated by counting sample points in the domain. This is an approximation inspired by the Lebesgue definition, not a full implementation of measure theory.</p></div>
+<h3>2. Functions included in the comparison</h3>
+<div class="sc"><table><tr><th>Function</th><th>Interval</th><th>Exact / theoretical integral</th></tr>
+<tr><td>sin(x)</td><td>[0, π]</td><td>2</td></tr><tr><td>x²</td><td>[0, 1]</td><td>1/3</td></tr>
+<tr><td>Step: 1 for x &lt; 0.5, 3 otherwise</td><td>[0, 1]</td><td>2</td></tr><tr><td>|x − 0.5|</td><td>[0, 1]</td><td>1/4</td></tr>
+<tr><td>Step: 1 for x &lt; 0.5, 0 otherwise</td><td>[0, 1]</td><td>1/2</td></tr><tr><td>sin(x)/x, with f(0) = 1</td><td>[0, π]</td><td>≈ 1.85194</td></tr><tr><td>Thomae's function</td><td>[0, 1]</td><td>0</td></tr></table></div>
+<p>The examples are non-negative and bounded, which allows the same range-partition method to be used for all of them. The value of sin(x)/x at x = 0 is defined as 1, its limiting value.</p>
+<h3>3. Run the numerical comparison</h3>
+<div class="panel"><div class="grid"><label>Number of domain intervals (N)<br><select id="domainN"><option>100</option><option selected>500</option><option>1000</option><option>2000</option><option>5000</option></select></label><label>Number of range levels (K)<br><select id="rangeK"><option>25</option><option selected>100</option><option>200</option><option>400</option></select></label></div><p><button onclick="runIntegration()">Run comparison</button></p><p class="m" id="intStatus">Ready to run.</p></div>
+<div class="sc"><table id="integrationTable"><tr><th>Function</th><th>Riemann midpoint</th><th>Lebesgue-inspired</th><th>Reference</th><th>Riemann error</th><th>Range error</th></tr></table></div>
+<div class="grid"><div><canvas id="convR" width="440" height="210"></canvas><p class="cap">Riemann midpoint error as N increases (x²)</p></div><div><canvas id="convL" width="440" height="210"></canvas><p class="cap">Range-partition error as K increases (x²)</p></div></div>
+<div class="out" id="integrationNotes">The numerical comparison and interpretation will appear here after the calculation.</div>
+<h3>4. Pathological examples and their meaning</h3>
+<div class="sc"><table><tr><th>Function</th><th>Riemann integral</th><th>Lebesgue integral</th><th>What happens?</th></tr>
+<tr><td>Dirichlet: 1 on rationals, 0 on irrationals</td><td>Does not exist</td><td>0</td><td>Every interval contains rational and irrational numbers. The upper and lower Riemann sums remain different.</td></tr>
+<tr><td>Thomae: 1/q at reduced p/q, 0 on irrationals</td><td>0</td><td>0</td><td>It is Riemann-integrable, even though it is discontinuous at every rational number.</td></tr></table></div>
+<p><b>Important numerical limitation:</b> a computer grid uses finitely many points, and the grid points are rational when represented as fractions. A direct test of the Dirichlet function on such a grid would return 1 at every sampled point, suggesting an integral of 1. This is misleading: the rational numbers have measure zero, so the Lebesgue integral is 0. The finite grid cannot represent this difference. For this reason, I discuss the Dirichlet function theoretically instead of presenting the grid result as a valid Lebesgue approximation.</p>
+<p>Thomae's function is different. Its values at rational sample points become small as the denominators increase, so numerical sums can move towards 0. It is a useful example of a function that is Riemann-integrable despite having many discontinuities.</p>
+<h3>5. Accuracy, convergence and efficiency</h3>
+<p>For continuous functions and the step functions used here, both numerical approaches should approach the same integral when the partitions are refined. The midpoint method uses N function evaluations. The range method evaluates the function on a domain grid, groups the values into K levels and then counts the points above each level. With a histogram and cumulative counts, this takes about N + K simple steps, and its result depends on both N and K. A larger K gives a finer range partition, while a larger N gives a better estimate of the measure of each preimage.</p>
+<p>For functions with jumps, the position of the partition points can affect the error, but the integral is still recovered as the partitions become finer. The Dirichlet example shows a more fundamental difference: it is not Riemann-integrable, even though its Lebesgue integral exists.</p>
+</section>
+
+<section id="ex2" class="exercise">
+<h2>Exercise 2 – Numerical Computation of the Normal CDF</h2>
+<h3>1. Definition of the standard normal CDF</h3>
+<p>The standard normal distribution has mean 0 and standard deviation 1. Its probability density function is:</p><div class="formula"><code>φ(t) = (1 / √(2π)) · e^(−t²/2)</code></div>
+<p>The cumulative distribution function gives the probability that a standard normal random variable is less than or equal to x:</p><div class="formula"><code>Φ(x) = ∫₋∞ˣ φ(t) dt</code></div>
+<p>Because the density is symmetric around zero, Φ(0) = 0.5. For a positive x, I can integrate from 0 to x and add 0.5. For a negative x, I use symmetry and subtract the area from 0 to |x| from 0.5.</p>
+<h3>2. Numerical method: composite Simpson's rule</h3>
+<p>I use Simpson's rule to approximate the integral from 0 to |x|. It divides the interval into an even number of subintervals and approximates the curve using parabolas.</p><div class="formula"><code>∫ₐᵇ f(t)dt ≈ h/3 · [f₀ + fₙ + 4(f₁ + f₃ + ...) + 2(f₂ + f₄ + ...)]</code></div>
+<p>Here, h = (b − a)/n and n must be even. The method is more accurate than a simple rectangle approximation for a smooth function such as the normal density.</p>
+<p>The implementation uses symmetry:</p><div class="formula"><code>Φ(x) = 0.5 + integral(0 to x), if x ≥ 0</code><br><code>Φ(x) = 0.5 − integral(0 to |x|), if x &lt; 0</code></div>
+<h3>3. Why is there no elementary formula?</h3>
+<p>The normal CDF contains the integral of the Gaussian exponential function. Liouville's theorem from the theory of elementary integration explains why this antiderivative cannot be written using only elementary functions such as polynomials, exponentials, logarithms and trigonometric functions. The theorem gives mathematical conditions for an elementary antiderivative to exist; applied to the Gaussian function, those conditions cannot be satisfied.</p>
+<p>This does not mean that the integral has no exact mathematical representation. The error function, called <code>erf</code>, is a special function defined by:</p><div class="formula"><code>erf(x) = (2/√π) · ∫₀ˣ e^(−t²) dt</code></div>
+<p>The normal CDF can therefore be written exactly as:</p><div class="formula"><code>Φ(x) = 0.5 · [1 + erf(x/√2)]</code></div>
+<p>In practice, a computer still needs an algorithm to evaluate <code>erf</code> or the integral. Numerical integration, series expansions and specialised approximations are common options. In this homework I implement Simpson's rule because its steps are clear and it works well for the smooth normal density.</p>
+<h3>4. Run the CDF calculation</h3>
+<div class="panel"><div class="grid"><label>Number of Simpson subintervals (even)<br><select id="simpsonN"><option>20</option><option>50</option><option selected>100</option><option>200</option><option>500</option><option>1000</option></select></label><label>Test point x<br><input id="cdfX" type="number" step="0.1" value="1.0"></label></div><p><button onclick="runCDF()">Calculate CDF</button></p><div class="out" id="cdfResult">The result will appear here.</div></div>
+<h3>5. Comparison with a trusted reference</h3>
+<p>The following values are taken from the NIST standard normal table. The table reports the area from 0 to |x|; I use symmetry to show the cumulative probability Φ(x).</p>
+<div class="sc"><table id="cdfTable"><tr><th>x</th><th>Simpson result</th><th>NIST reference</th><th>Absolute error</th></tr></table></div><div class="out" id="cdfSummary"></div>
+<h3>6. Accuracy and computational efficiency</h3>
+<p>Simpson's rule uses more function evaluations when the number of subintervals increases. For a smooth function, the approximation error generally decreases quickly as the interval is refined. The calculation is still lightweight for the values used here. The table above compares the numerical results with NIST values rounded to five decimal places, so very small differences can also come from the rounding of the reference table.</p>
+<p>Other possible methods include the power series of the error function and specialised approximations to <code>erf</code>. A series can be accurate near the origin but may need many terms for larger inputs. Specialised approximations can be faster, but they require more formulas and care with numerical error. Simpson's rule is a straightforward method to implement and understand.</p>
+<h3>7. Sources</h3>
+<ul class="small"><li><a href="https://itl.nist.gov/div898/handbook/eda/section3/eda3671.htm" target="_blank" rel="noopener">NIST – Standard Normal Cumulative Distribution Function table</a></li>
+<li><a href="https://dlmf.nist.gov/7.2" target="_blank" rel="noopener">NIST Digital Library of Mathematical Functions – Error function definition</a></li>
+<li><a href="https://faculty.etsu.edu/gardnerr/4047/notes-Hogg-McKean-Craig/Hogg-McKean-Craig-3-4.pdf" target="_blank" rel="noopener">Course reference – Hogg, McKean and Craig, Section 3.4: The Normal Distribution</a></li>
+<li><a href="https://math.stanford.edu/~conrad/papers/elemint.pdf" target="_blank" rel="noopener">Brian Conrad – Impossibility theorems for elementary integration</a></li></ul>
+</section></main>
+
+<script>
+function showExercise(w){document.getElementById('ex1').classList.toggle('active',w===1);document.getElementById('ex2').classList.toggle('active',w===2);document.getElementById('tab1').classList.toggle('active',w===1);document.getElementById('tab2').classList.toggle('active',w===2);}
+const PI=Math.PI;
+function gcd(a,b){while(b){const t=b;b=a%b;a=t;}return a;}
+function thomae(x,i,N){if(x===0||x===1)return 1;const num=2*i+1,den=2*N,d=gcd(num,den);return 1/(den/d);}
+const F=[
+{name:'sin(x), [0, π]',a:0,b:PI,f:x=>Math.sin(x),exact:2},
+{name:'x², [0, 1]',a:0,b:1,f:x=>x*x,exact:1/3},
+{name:'Step 1 / 3, [0, 1]',a:0,b:1,f:x=>x<.5?1:3,exact:2},
+{name:'|x − 0.5|, [0, 1]',a:0,b:1,f:x=>Math.abs(x-.5),exact:.25},
+{name:'Step 1 / 0, [0, 1]',a:0,b:1,f:x=>x<.5?1:0,exact:.5},
+{name:'sin(x)/x, [0, π]',a:0,b:PI,f:x=>x===0?1:Math.sin(x)/x,exact:1.851937051982466},
+{name:"Thomae's function",a:0,b:1,f:thomae,exact:0}];
+function riemann(fn,N){const dx=(fn.b-fn.a)/N;let s=0;for(let i=0;i<N;i++)s+=fn.f(fn.a+(i+.5)*dx,i,N);return s*dx;}
+function lebesgue(fn,N,K){const dx=(fn.b-fn.a)/N,vals=[];let max=0;for(let i=0;i<N;i++){const v=fn.f(fn.a+(i+.5)*dx,i,N);vals.push(v);if(v>max)max=v;}if(max===0)return 0;const dy=max/K,hist=new Array(K).fill(0);for(const v of vals){const bin=Math.min(K-1,Math.floor(v/dy));hist[bin]++;}let tail=0,s=0;for(let j=K-1;j>=0;j--){tail+=hist[j];s+=(tail/N)*(fn.b-fn.a)*dy;}return s;}
+function fmt(v){return Number(v).toFixed(6);}
+function runIntegration(){const N=+document.getElementById('domainN').value,K=+document.getElementById('rangeK').value,t0=performance.now();let rows='<tr><th>Function</th><th>Riemann midpoint</th><th>Lebesgue-inspired</th><th>Reference</th><th>Riemann error</th><th>Range error</th></tr>',timesR=0,timesL=0;
+for(const fn of F){let t=performance.now(),r=riemann(fn,N);timesR+=performance.now()-t;t=performance.now();let l=lebesgue(fn,N,K);timesL+=performance.now()-t;rows+=`<tr><td>${fn.name}</td><td>${fmt(r)}</td><td>${fmt(l)}</td><td>${fmt(fn.exact)}</td><td>${fmt(Math.abs(r-fn.exact))}</td><td>${fmt(Math.abs(l-fn.exact))}</td></tr>`;}
+document.getElementById('integrationTable').innerHTML=rows;document.getElementById('intStatus').textContent=`Completed with N = ${N} domain points and K = ${K} range levels. Total time: ${(performance.now()-t0).toFixed(2)} ms.`;
+document.getElementById('integrationNotes').innerHTML=`For these examples, both methods give values close to the reference integrals. The Riemann calculations took about <b>${timesR.toFixed(3)} ms</b>, and the range calculations about <b>${timesL.toFixed(3)} ms</b>. These short timings are indicative only and depend on the browser and computer. The range method depends on both N, which estimates preimage lengths, and K, which divides the function values.`;
+drawConv();}
+function drawLine(id,vals,label){const c=document.getElementById(id),g=c.getContext('2d'),W=c.width,H=c.height,L=45,R=W-12,T=20,B=H-32,mx=Math.max(...vals.map(v=>v.y),1e-8);g.clearRect(0,0,W,H);g.strokeStyle='#30363d';g.beginPath();g.moveTo(L,T);g.lineTo(L,B);g.lineTo(R,B);g.stroke();g.strokeStyle='#3fb950';g.lineWidth=2;g.beginPath();vals.forEach((v,i)=>{const x=L+i*(R-L)/(vals.length-1),y=B-v.y/mx*(B-T);i?g.lineTo(x,y):g.moveTo(x,y);});g.stroke();g.fillStyle='#8b949e';g.font='11px Arial';g.fillText(label,8,13);g.fillText(mx.toExponential(1),4,T+5);g.fillText('0',24,B+4);g.textAlign='center';g.fillText('partition size increases →',W/2,H-8);g.textAlign='left';}
+function drawConv(){const fn=F[1],exact=fn.exact,Ns=[20,50,100,250,500,1000,2000],Ks=[5,10,20,40,80,160,320];drawLine('convR',Ns.map(n=>({y:Math.abs(riemann(fn,n)-exact)})),'Absolute error');drawLine('convL',Ks.map(k=>({y:Math.abs(lebesgue(fn,2000,k)-exact)})),'Absolute error');}
+function density(x){return Math.exp(-x*x/2)/Math.sqrt(2*Math.PI);}
+function simpson(a,n){if(a===0)return 0;const h=a/n;let s=density(0)+density(a);for(let i=1;i<n;i++)s+=(i%2===0?2:4)*density(i*h);return s*h/3;}
+function cdf(x,n){const area=simpson(Math.abs(x),n);return x>=0?.5+area:.5-area;}
+const refs=[[-3,.00135],[-2,.02275],[-1.5,.06681],[-1,.15866],[-.5,.30854],[0,.5],[.5,.69146],[1,.84134],[1.5,.93319],[2,.97725],[3,.99865]];
+function runCDF(){const n=+document.getElementById('simpsonN').value,x=Number(document.getElementById('cdfX').value);if(!Number.isFinite(x)||Math.abs(x)>5){document.getElementById('cdfResult').textContent='Please enter a number between -5 and 5 for this numerical demonstration.';return;}const t=performance.now(),v=cdf(x,n),elapsed=performance.now()-t;document.getElementById('cdfResult').innerHTML=`For x = <b>${x}</b> and ${n} Simpson subintervals:<br>Φ(x) ≈ <b>${v.toFixed(10)}</b><br>Calculation time: ${elapsed.toFixed(4)} ms.`;let rows='<tr><th>x</th><th>Simpson result</th><th>NIST reference</th><th>Absolute error</th></tr>',max=0;for(const [z,r] of refs){const a=cdf(z,n),e=Math.abs(a-r);max=Math.max(max,e);rows+=`<tr><td>${z}</td><td>${a.toFixed(8)}</td><td>${r.toFixed(5)}</td><td>${e.toExponential(2)}</td></tr>`;}document.getElementById('cdfTable').innerHTML=rows;document.getElementById('cdfSummary').innerHTML=`With ${n} subintervals, the largest absolute difference from the displayed NIST table values is <b>${max.toExponential(3)}</b>. The reference values are rounded to five decimal places, so this comparison includes their rounding.`;}
+runIntegration();runCDF();
+</script></body></html>
