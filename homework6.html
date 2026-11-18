@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Homework 6 - Statistical Independence</title>
+<style>
+:root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--green:#3fb950;--blue:#58a6ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 Arial,sans-serif}main{max-width:960px;margin:auto;padding:24px 16px 60px}
+.student-info{text-align:right;font:.92rem "Courier New",monospace;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:12px}.student-info span{color:var(--green);font-weight:bold}
+.repo{text-align:right;margin-bottom:20px}.repo a{display:inline-block;background:var(--panel);color:var(--green);border:1px solid var(--green);padding:6px 14px;text-decoration:none;font:bold .9rem "Courier New",monospace}
+h1,h2{color:var(--green);font-family:"Courier New",monospace}h1{font-size:1.6rem;line-height:1.3}h2{font-size:1.15rem;border-bottom:1px solid var(--border);padding-bottom:5px;margin-top:30px}h3{font-size:1rem;margin:22px 0 7px}
+p{margin:9px 0}code{font-family:"Courier New",monospace;color:#7ee787;background:var(--panel);padding:1px 4px}
+.panel,.formula,.result{background:var(--panel);border:1px solid var(--border);padding:13px 15px;margin:13px 0;border-radius:4px}.formula{border-left:3px solid var(--green);overflow-x:auto}
+.muted,.small{color:var(--muted)}.small{font-size:.86rem}
+textarea{width:100%;min-height:230px;resize:vertical;font:.87rem/1.45 "Courier New",monospace;background:var(--bg);color:var(--text);border:1px solid var(--border);padding:9px}
+button{font:inherit;color:var(--text);background:#238636;border:1px solid #238636;padding:8px 12px;cursor:pointer;font-weight:bold}button.secondary{background:var(--panel);border-color:var(--border)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.table-wrap{overflow-x:auto;margin:10px 0}table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:400px}td,th{border:1px solid var(--border);padding:7px 9px;text-align:right}td:first-child,th:first-child{text-align:left}th{color:var(--green);background:#111820}
+.result b{color:var(--green)}.status{padding:10px 12px;background:var(--panel);border-left:3px solid var(--green);margin:12px 0}.warning{border-left-color:#d29922}
+@media(max-width:650px){.grid{grid-template-columns:1fr}main{padding:18px 12px 40px}h1{font-size:1.35rem}}
+</style></head><body><main>
+<div class="student-info">Student: <span>Alexandru Andrei Golosceapov</span> | Matricola: <span>2318384</span></div>
+<div class="repo"><a href="https://github.com/alexgolo6/Statistics-Homework" target="_blank" rel="noopener">Show GitHub repository</a></div>
+<h1>Homework 6: Statistical Independence</h1>
+<p>In this homework, I use a bivariate categorical dataset to study whether two variables are statistically independent. I first construct a contingency table from the observations, calculate marginal and conditional frequencies, and then compare the observed counts with the frequencies expected under independence. Finally, I use the chi-square test to interpret the relationship between the variables.</p>
+
+<h2>1. Theoretical background</h2>
+<p>Two variables are statistically independent when knowing the value of one variable does not change the probabilities of the categories of the other variable. For two events A and B, independence is defined as:</p>
+<div class="formula"><code>P(A ∩ B) = P(A) · P(B)</code></div>
+<p>For categorical variables X and F, this means that the joint probability of each pair of categories is the product of the corresponding marginal probabilities:</p>
+<div class="formula"><code>P(X = xᵢ, F = fⱼ) = P(X = xᵢ) · P(F = fⱼ)</code></div>
+<p>Equivalently, <code>P(F = fⱼ | X = xᵢ) = P(F = fⱼ)</code>: the conditional distribution of F is the same in every row. This is why I compute the conditional frequencies below.</p>
+<p>A contingency table shows how many observations belong to each combination of categories. It allows the observed frequencies to be compared with the frequencies expected if the variables were independent.</p>
+
+<h2>2. Dataset and contingency table</h2>
+<p>I use an illustrative dataset about study method and exam result. Each line represents one observation and contains two categorical values separated by a comma. The data are synthetic, not results from a real survey. The same program can process another two-column dataset in this format.</p>
+<div class="panel">
+<label for="dataset"><b>Dataset (one observation per line: X,F)</b></label>
+<textarea id="dataset" spellcheck="false">Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Pass
+Study group,Fail
+Study group,Fail
+Study group,Fail
+Study group,Fail
+Study group,Fail
+Study group,Fail
+Study group,Fail
+Study group,Fail
+Study group,Fail
+Study group,Fail
+Individual study,Pass
+Individual study,Pass
+Individual study,Pass
+Individual study,Pass
+Individual study,Pass
+Individual study,Pass
+Individual study,Pass
+Individual study,Pass
+Individual study,Pass
+Individual study,Pass
+Individual study,Pass
+Individual study,Pass
+Individual study,Pass
+Individual study,Pass
+Individual study,Pass
+Individual study,Pass
+Individual study,Pass
+Individual study,Pass
+Individual study,Pass
+Individual study,Pass
+Individual study,Fail
+Individual study,Fail
+Individual study,Fail
+Individual study,Fail
+Individual study,Fail
+Individual study,Fail
+Individual study,Fail
+Individual study,Fail
+Individual study,Fail
+Individual study,Fail
+Individual study,Fail
+Individual study,Fail
+Individual study,Fail
+Individual study,Fail
+Individual study,Fail
+Individual study,Fail
+Individual study,Fail
+Individual study,Fail
+Individual study,Fail
+Individual study,Fail</textarea>
+<div class="actions"><button onclick="analyse()">Build table and calculate</button><button class="secondary" onclick="restore()">Restore example dataset</button></div>
+<p class="small">Both variables should be categorical. If a variable is continuous, it should first be grouped into meaningful categories. Each non-empty line must contain exactly two non-empty values separated by a comma.</p>
+<div id="status" class="small muted">Example dataset loaded.</div>
+</div>
+
+<div id="results" style="display:none">
+<h3>Observed contingency table</h3><div class="table-wrap" id="observed"></div>
+<div class="grid"><div><h3>Marginal frequencies of X</h3><div class="table-wrap" id="margX"></div></div><div><h3>Marginal frequencies of F</h3><div class="table-wrap" id="margF"></div></div></div>
+<h3>Conditional relative frequencies</h3>
+<p class="small">The first table gives the distribution of F within each X category (row percentages). The second gives the distribution of X within each F category (column percentages).</p>
+<div class="grid"><div class="table-wrap" id="rowCond"></div><div class="table-wrap" id="colCond"></div></div>
+
+<h2>3. Expected frequencies under independence</h2>
+<p>The test compares two hypotheses. <b>H₀:</b> X and F are independent. <b>H₁:</b> X and F are not independent (they are associated). If H₀ is true, the expected count in cell (i,j) is:</p>
+<div class="formula"><code>Eᵢⱼ = (row totalᵢ × column totalⱼ) / grand total</code></div>
+<div class="table-wrap" id="expected"></div>
+<p class="small">Expected frequencies are theoretical counts under the null hypothesis. They do not have to be whole numbers.</p>
+
+<h2>4. Chi-square test of independence</h2>
+<p>The chi-square statistic measures the difference between observed and expected frequencies:</p>
+<div class="formula"><code>χ² = Σ (Oᵢⱼ − Eᵢⱼ)² / Eᵢⱼ</code></div>
+<p>O represents an observed count and E the corresponding expected count. The degrees of freedom are:</p>
+<div class="formula"><code>df = (number of X categories − 1) × (number of F categories − 1)</code></div>
+<div class="grid"><div class="result" id="testStats"></div><div class="result" id="decision"></div></div>
+<p class="small">I also calculate the p-value from the chi-square distribution, because it helps interpret the test. I use a significance level of 0.05.</p>
+<div id="assumptions" class="status"></div>
+
+<h2>5. Interpretation and conclusion</h2><div class="result" id="conclusion"></div>
+</div>
+
+<h2>6. Statistical association and causality</h2>
+<p>A statistically significant result suggests that the distribution of one variable differs across categories of the other variable. It does not show that one variable causes the other. The relationship may be influenced by other variables, selection effects or the way the data were collected. A causal conclusion requires an appropriate study design and additional evidence, not only a chi-square test.</p>
+
+<h2>7. Method and limitations</h2>
+<ul>
+<li>The chi-square test is designed for categorical data recorded as counts. Continuous variables should first be grouped into meaningful categories.</li>
+<li>Each observation should belong to one category of X and one category of F. Observations should also be independent of one another.</li>
+<li>The chi-square approximation may be unreliable when expected cell counts are very small. A common guideline is that expected counts should generally be at least 5. For a sparse 2 × 2 table, Fisher's exact test may be more appropriate.</li>
+<li>A statistically significant result does not automatically mean that the association is strong or practically important. The result should be interpreted together with the frequencies and the context of the data.</li>
+</ul>
+</main>
+<script>
+const sample=["Study group,Pass","Study group,Fail","Individual study,Pass","Individual study,Fail"];
+function restore(){document.getElementById("dataset").value=[...Array(30).fill(sample[0]),...Array(10).fill(sample[1]),...Array(20).fill(sample[2]),...Array(20).fill(sample[3])].join("\n");analyse();}
+function safe(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function num(x,d=3){return Number(x).toFixed(d);}
+function parse(raw){const out=[];raw.split(/\r?\n/).forEach((line,i)=>{line=line.trim();if(!line)return;const p=line.split(",");if(p.length!==2||!p[0].trim()||!p[1].trim())throw Error("Line "+(i+1)+" must contain exactly two non-empty values separated by a comma.");out.push([p[0].trim(),p[1].trim()]);});if(!out.length)throw Error("The dataset is empty.");return out;}
+function table(rows,cols,m,totals=true){const showSum=v=>Number.isInteger(v)?String(v):num(v,3);let h="<table><tr><th>X / F</th>"+cols.map(c=>"<th>"+safe(c)+"</th>").join("")+(totals?"<th>Total</th>":"")+"</tr>";for(let i=0;i<rows.length;i++){h+="<tr><th>"+safe(rows[i])+"</th>";for(let j=0;j<cols.length;j++)h+="<td>"+m[i][j]+"</td>";if(totals)h+="<td><b>"+showSum(m[i].reduce((a,b)=>a+Number(b),0))+"</b></td>";h+="</tr>";}if(totals){h+="<tr><th>Total</th>";for(let j=0;j<cols.length;j++)h+="<td><b>"+showSum(m.reduce((s,r)=>s+Number(r[j]),0))+"</b></td>";h+="<td><b>"+showSum(m.flat().reduce((a,b)=>a+Number(b),0))+"</b></td></tr>";}return h+"</table>";}
+function logGamma(z){const c=[676.5203681218851,-1259.1392167224028,771.32342877765313,-176.61502916214059,12.507343278686905,-.13857109526572012,9.984369578019572e-6,1.505632735149312e-7];if(z<.5)return Math.log(Math.PI)-Math.log(Math.sin(Math.PI*z))-logGamma(1-z);z-=1;let x=.99999999999981;for(let i=0;i<c.length;i++)x+=c[i]/(z+i+1);const t=z+c.length-.5;return .5*Math.log(2*Math.PI)+(z+.5)*Math.log(t)-t+Math.log(x);}
+function gammaQ(a,x){if(x<=0)return 1;const gl=logGamma(a),eps=1e-14,tiny=1e-300,max=1000;if(x<a+1){let ap=a,sum=1/a,del=sum;for(let i=1;i<=max;i++){ap++;del*=x/ap;sum+=del;if(Math.abs(del)<Math.abs(sum)*eps)break;}return Math.max(0,Math.min(1,1-sum*Math.exp(-x+a*Math.log(x)-gl)));}let b=x+1-a,c=1/tiny,d=1/b,h=d;for(let i=1;i<=max;i++){const an=-i*(i-a);b+=2;d=an*d+b;if(Math.abs(d)<tiny)d=tiny;c=b+an/c;if(Math.abs(c)<tiny)c=tiny;d=1/d;const q=d*c;h*=q;if(Math.abs(q-1)<eps)break;}return Math.max(0,Math.min(1,Math.exp(-x+a*Math.log(x)-gl)*h));}
+function analyse(){const status=document.getElementById("status");try{const data=parse(document.getElementById("dataset").value),xs=[...new Set(data.map(d=>d[0]))],fs=[...new Set(data.map(d=>d[1]))];if(xs.length<2||fs.length<2)throw Error("Both variables must contain at least two different categories.");if(xs.length*fs.length>400)throw Error("This version supports up to 400 cells in the contingency table.");const ix=new Map(xs.map((v,i)=>[v,i])),jf=new Map(fs.map((v,j)=>[v,j])),o=xs.map(()=>fs.map(()=>0));data.forEach(d=>o[ix.get(d[0])][jf.get(d[1])]++);const r=o.map(a=>a.reduce((s,v)=>s+v,0)),c=fs.map((_,j)=>o.reduce((s,a)=>s+a[j],0)),n=data.length;
+document.getElementById("observed").innerHTML=table(xs,fs,o);
+document.getElementById("margX").innerHTML="<table><tr><th>Category</th><th>Count</th><th>Relative</th></tr>"+xs.map((x,i)=>"<tr><td>"+safe(x)+"</td><td>"+r[i]+"</td><td>"+num(100*r[i]/n,2)+"%</td></tr>").join("")+"</table>";
+document.getElementById("margF").innerHTML="<table><tr><th>Category</th><th>Count</th><th>Relative</th></tr>"+fs.map((x,j)=>"<tr><td>"+safe(x)+"</td><td>"+c[j]+"</td><td>"+num(100*c[j]/n,2)+"%</td></tr>").join("")+"</table>";
+document.getElementById("rowCond").innerHTML="<b>F given X (row %)</b>"+table(xs,fs,o.map((a,i)=>a.map(v=>num(100*v/r[i],2)+"%")),false);
+document.getElementById("colCond").innerHTML="<b>X given F (column %)</b>"+table(xs,fs,xs.map((_,i)=>fs.map((__,j)=>num(100*o[i][j]/c[j],2)+"%")),false);
+const e=o.map((a,i)=>a.map((v,j)=>r[i]*c[j]/n));document.getElementById("expected").innerHTML=table(xs,fs,e.map(a=>a.map(v=>num(v))));
+let chi=0,min=Infinity;for(let i=0;i<xs.length;i++)for(let j=0;j<fs.length;j++){chi+=(o[i][j]-e[i][j])**2/e[i][j];min=Math.min(min,e[i][j]);}
+const df=(xs.length-1)*(fs.length-1),p=gammaQ(df/2,chi/2),sig=p<.05;
+document.getElementById("testStats").innerHTML="<b>Test results</b><br>Observations: "+n+"<br>χ² statistic: <b>"+num(chi,4)+"</b><br>Degrees of freedom: "+df+"<br>p-value: <b>"+p.toFixed(6)+"</b><br>Significance level: 0.05";
+document.getElementById("decision").innerHTML="<b>Decision</b><br>"+(sig?"p-value < 0.05: reject the null hypothesis of independence.":"p-value ≥ 0.05: do not reject the null hypothesis of independence.")+"<br><br>"+(sig?"The data provide evidence of a statistical association.":"The data do not provide sufficient evidence of a statistical association.");
+const note=document.getElementById("assumptions");note.className="status"+(min<5?" warning":"");note.innerHTML="<b>Expected-count check:</b> the smallest expected count is "+num(min)+". "+(min<5?"At least one expected count is below 5, so the chi-square approximation may be unreliable. Fisher's exact test can be considered for a 2 × 2 table.":"All expected counts are at least 5, satisfying the usual guideline.");
+document.getElementById("conclusion").innerHTML=sig?"For this dataset, the test suggests an association between X and F. The conditional percentages show that the distribution of F is not the same in all the categories of X. This is evidence of association, not proof that one variable causes the other.":"For this dataset, the test does not provide enough evidence to conclude that the variables are associated. This does not prove independence; it means that the data do not provide strong enough evidence against independence at the 5% significance level.";
+document.getElementById("results").style.display="block";status.style.color="";status.textContent="Processed "+n+" observations, with "+xs.length+" X categories and "+fs.length+" F categories.";
+}catch(err){status.style.color="#f0883e";status.textContent=err.message;document.getElementById("results").style.display="none";}}
+analyse();
+</script></body></html>
